@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { Trophy, QrCode, Scan, LayoutDashboard } from "lucide-react";
+import {
+  Trophy,
+  QrCode,
+  Scan,
+  LayoutDashboard,
+  Calendar,
+  MapPin,
+} from "lucide-react";
 import {
   getAttendeeByEmail,
   getAttendeeById,
@@ -90,6 +97,22 @@ export default function TicketPage() {
           </h1>
           <p className="text-gray-600">{attendee.name}</p>
           <p className="text-gray-500 text-sm">{attendee.email}</p>
+
+          {/* Compact Event Details */}
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+            <Calendar size={14} className="text-purple-500" />
+            <span>April 4, 2025 • 9:00 AM</span>
+            <span className="mx-1">•</span>
+            <a
+              href="https://maps.app.goo.gl/oZvfnWdYoC7va8bt7"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-purple-600 transition-colors"
+            >
+              <MapPin size={14} className="text-purple-500" />
+              <span>Pllek</span>
+            </a>
+          </div>
         </div>
 
         <div className="flex justify-center mb-8">
