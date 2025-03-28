@@ -7,7 +7,10 @@ import ScanPage from "./pages/ScanPage";
 import AdminPage from "./pages/AdminPage";
 import CheckInPage from "./pages/CheckInPage";
 import RafflePage from "./pages/RafflePage";
+import RulesPage from "./pages/RulesPage";
+import InfoPage from "./pages/InfoPage";
 import StaffRoute from "./components/StaffRoute";
+import Footer from "./components/Footer";
 
 function App() {
   return (
@@ -17,6 +20,8 @@ function App() {
           <Route path="/ticket" element={<TicketPage />} />
           <Route path="/identify" element={<IdentifyPage />} />
           <Route path="/scan" element={<ScanPage />} />
+          <Route path="/rules" element={<RulesPage />} />
+          <Route path="/info" element={<InfoPage />} />
           <Route
             path="/admin"
             element={
@@ -43,6 +48,7 @@ function App() {
           />
           <Route path="/" element={<Navigate to="/identify" replace />} />
         </Routes>
+        <Footer />
         <Toaster position="top-center" />
       </div>
     </BrowserRouter>
