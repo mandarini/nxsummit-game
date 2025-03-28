@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { Trophy, QrCode, Scan, Home } from "lucide-react";
+import { Trophy, QrCode, Scan, LayoutDashboard } from "lucide-react";
 import {
   getAttendeeByEmail,
   getAttendeeById,
@@ -75,16 +75,11 @@ export default function TicketPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       {isStaff(attendee) && (
         <button
-          onClick={() => {
-            localStorage.removeItem("attendeeId");
-            localStorage.removeItem("isStaff");
-            navigate("/identify");
-          }}
-          className="absolute top-4 left-4 text-white/50 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
-          title="Sign in as someone else"
+          onClick={() => navigate("/admin")}
+          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
         >
-          <Home size={18} />
-          <span className="text-sm">Switch User</span>
+          <LayoutDashboard size={18} />
+          <span>Admin Dashboard</span>
         </button>
       )}
 
