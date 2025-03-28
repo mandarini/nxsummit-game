@@ -3,14 +3,20 @@ import type { Attendee } from "./supabase";
 
 export async function isStaffMember(email: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .from("attendees")
-      .select("role")
-      .eq("email", email.toLowerCase())
-      .single();
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-staff`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ email }),
+      }
+    );
 
-    if (error) throw error;
-    return data?.role === "staff" || data?.role === "super_admin";
+    const data = await response.json();
+    return data.success && data.isStaff;
   } catch (error) {
     console.error("Error checking staff status:", error);
     return false;
@@ -89,6 +95,9 @@ export async function isGameOn(): Promise<boolean> {
 
 export async function toggleGame(value: boolean): Promise<boolean> {
   try {
+    const attendeeId = localStorage.getItem("attendeeId");
+    if (!attendeeId) return false;
+
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/toggle-game`,
       {
@@ -97,7 +106,7 @@ export async function toggleGame(value: boolean): Promise<boolean> {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ value }),
+        body: JSON.stringify({ value, attendeeId }),
       }
     );
 

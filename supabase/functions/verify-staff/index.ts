@@ -26,46 +26,44 @@ Deno.serve(async (req) => {
       }
     );
 
-    const { value, attendeeId } = await req.json();
+    const { email } = await req.json();
 
-    if (!attendeeId) {
-      throw new Error("Unauthorized - No attendee ID provided");
+    if (!email) {
+      throw new Error("Email is required");
     }
 
-    // Verify the user is a super_admin using attendeeId
+    // Verify staff status
     const { data: attendee, error: attendeeError } = await supabase
       .from("attendees")
       .select("role")
-      .eq("id", attendeeId)
+      .eq("email", email.toLowerCase())
       .single();
 
-    if (attendeeError || attendee?.role !== "super_admin") {
-      throw new Error("Unauthorized - Not a super admin");
-    }
+    if (attendeeError) throw attendeeError;
 
-    // Update the game state
-    const { error: updateError } = await supabase
-      .from("settings")
-      .update({ value })
-      .eq("key", "game_on");
+    const isStaff =
+      attendee?.role === "staff" || attendee?.role === "super_admin";
 
-    if (updateError) throw updateError;
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        isStaff,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      }
+    );
   } catch (error) {
-    console.error("Error:", error.message);
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
       }),
       {
-        status: error.message.includes("Unauthorized") ? 403 : 400,
+        status: 400,
         headers: {
           "Content-Type": "application/json",
           ...corsHeaders,
