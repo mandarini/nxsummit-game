@@ -1,15 +1,20 @@
 import React, { useState } from "react";
-import { Plus, ChevronUp } from "lucide-react";
+import { Plus, ChevronUp, UserCheck, UserX } from "lucide-react";
 import type { Attendee } from "../../lib/supabase";
 
 interface AttendeesTableProps {
   attendees: Attendee[];
   onAddPoints: (attendeeId: string, points: number) => Promise<void>;
+  onToggleCheckIn: (
+    attendeeId: string,
+    currentStatus: boolean
+  ) => Promise<void>;
 }
 
 export default function AttendeesTable({
   attendees,
   onAddPoints,
+  onToggleCheckIn,
 }: AttendeesTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -67,26 +72,50 @@ export default function AttendeesTable({
                     {attendee.value}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button
-                      onClick={() =>
-                        setExpandedRow(
-                          expandedRow === attendee.id ? null : attendee.id
-                        )
-                      }
-                      className="text-purple-600 hover:text-purple-800 flex items-center"
-                    >
-                      {expandedRow === attendee.id ? (
-                        <>
-                          <ChevronUp size={16} className="mr-1" />
-                          Hide
-                        </>
-                      ) : (
-                        <>
-                          <Plus size={16} className="mr-1" />
-                          Add Points
-                        </>
-                      )}
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() =>
+                          setExpandedRow(
+                            expandedRow === attendee.id ? null : attendee.id
+                          )
+                        }
+                        className="text-purple-600 hover:text-purple-800 flex items-center"
+                      >
+                        {expandedRow === attendee.id ? (
+                          <>
+                            <ChevronUp size={16} className="mr-1" />
+                            Hide
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={16} className="mr-1" />
+                            Add Points
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() =>
+                          onToggleCheckIn(attendee.id, attendee.checked_in)
+                        }
+                        className={`flex items-center ${
+                          attendee.checked_in
+                            ? "text-red-600 hover:text-red-800"
+                            : "text-green-600 hover:text-green-800"
+                        }`}
+                      >
+                        {attendee.checked_in ? (
+                          <>
+                            <UserX size={16} className="mr-1" />
+                            Check Out
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck size={16} className="mr-1" />
+                            Check In
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {expandedRow === attendee.id && (

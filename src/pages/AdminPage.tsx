@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, type Attendee } from "../lib/supabase";
 import { isSuperAdmin, isGameOn, toggleGame } from "../lib/auth";
@@ -12,10 +12,14 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<Attendee | null>(null);
   const [gameEnabled, setGameEnabled] = useState(false);
+  const scrollPosition = useRef<number>(0);
   const navigate = useNavigate();
 
   async function loadAttendees() {
     try {
+      // Save current scroll position
+      scrollPosition.current = window.scrollY;
+
       const { data, error } = await supabase
         .from("attendees")
         .select("*")
@@ -23,8 +27,13 @@ export default function AdminPage() {
 
       if (error) throw error;
       setAttendees(data || []);
+
+      // Restore scroll position after state update
+      setTimeout(() => {
+        window.scrollTo(0, scrollPosition.current);
+      }, 0);
     } catch (error) {
-      console.error("Failed to load attendees:", error);
+      console.error("Error loading attendees:", error);
       toast.error("Failed to load attendees");
     } finally {
       setLoading(false);
@@ -75,10 +84,37 @@ export default function AdminPage() {
       if (error) throw error;
 
       toast.success(`Added ${points} points successfully!`);
-      loadAttendees();
+      await loadAttendees();
     } catch (error) {
-      console.error("Failed to add points:", error);
+      console.error("Error adding points:", error);
       toast.error("Failed to add points");
+    }
+  };
+
+  const toggleCheckIn = async (attendeeId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("attendees")
+        .update({ checked_in: !currentStatus })
+        .eq("id", attendeeId);
+
+      if (error) throw error;
+
+      // Update the attendee in the current state to avoid full reload
+      setAttendees((prev) =>
+        prev.map((a) =>
+          a.id === attendeeId ? { ...a, checked_in: !currentStatus } : a
+        )
+      );
+
+      toast.success(
+        `Attendee ${currentStatus ? "checked out" : "checked in"} successfully!`
+      );
+    } catch (error) {
+      console.error("Error toggling check-in:", error);
+      toast.error(
+        `Failed to ${currentStatus ? "check out" : "check in"} attendee`
+      );
     }
   };
 
@@ -125,7 +161,11 @@ export default function AdminPage() {
           />
         </div>
 
-        <AttendeesTable attendees={attendees} onAddPoints={addPoints} />
+        <AttendeesTable
+          attendees={attendees}
+          onAddPoints={addPoints}
+          onToggleCheckIn={toggleCheckIn}
+        />
       </div>
     </div>
   );
