@@ -45,17 +45,25 @@ export async function verifyStaffPassword(password: string): Promise<boolean> {
   }
 }
 
+// Helper functions that rely on server-verified status
 export async function requireStaffAccess(
   attendee: Attendee | null
 ): Promise<boolean> {
-  if (
-    !attendee ||
-    (attendee.role !== "staff" && attendee.role !== "super_admin")
-  )
-    return false;
+  if (!attendee?.email) return false;
 
   const stored = localStorage.getItem("staff_access_granted");
-  if (stored === "true") return true;
+  if (stored === "true") {
+    // Verify the stored access is still valid
+    const isStaff = await isStaffMember(attendee.email);
+    if (!isStaff) {
+      localStorage.removeItem("staff_access_granted");
+      return false;
+    }
+    return true;
+  }
+
+  const isStaff = await isStaffMember(attendee.email);
+  if (!isStaff) return false;
 
   const password = prompt("Please enter staff password to continue");
   if (!password) return false;

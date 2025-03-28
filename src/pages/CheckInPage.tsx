@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { ArrowLeft } from "lucide-react";
 import { checkInAttendee, getAttendeeById } from "../lib/supabase";
-import { isStaff } from "../lib/auth";
+import { requireStaffAccess } from "../lib/auth";
 import toast from "react-hot-toast";
 
 const SCANNER_ID = "reader";
@@ -17,89 +17,100 @@ export default function CheckInPage() {
 
   useEffect(() => {
     const attendeeId = localStorage.getItem("attendeeId");
-    if (!attendeeId) {
+    const staffAccessGranted = localStorage.getItem("staff_access_granted");
+
+    if (!attendeeId || staffAccessGranted !== "true") {
       navigate("/identify");
       return;
     }
 
     // Verify the staff member exists and has proper access
     getAttendeeById(attendeeId)
-      .then((attendee) => {
-        if (!attendee || !isStaff(attendee)) {
+      .then(async (attendee) => {
+        if (!attendee) {
           navigate("/identify");
+          return;
         }
+
+        const hasAccess = await requireStaffAccess(attendee);
+        if (!hasAccess) {
+          navigate("/identify");
+          return;
+        }
+
+        const html5QrCode = new Html5Qrcode(SCANNER_ID, {
+          verbose: false,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        });
+        setScanner(html5QrCode);
+
+        const startScanner = async () => {
+          try {
+            await html5QrCode.start(
+              { facingMode: "environment" },
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1,
+              },
+              async (decodedText) => {
+                if (scanning) return;
+
+                setScanning(true);
+                try {
+                  await html5QrCode.pause();
+
+                  const attendee = await getAttendeeById(decodedText);
+                  if (!attendee) {
+                    toast.error("Invalid QR code");
+                    setScanning(false);
+                    return;
+                  }
+
+                  if (attendee.checked_in) {
+                    toast.error("Attendee is already checked in!");
+                    setScanning(false);
+                    return;
+                  }
+
+                  await checkInAttendee(decodedText);
+                  toast.success(`✅ ${attendee.name} has been checked in!`);
+                } catch (error) {
+                  console.error("Failed to check in attendee", error);
+                  toast.error("Failed to check in attendee");
+                } finally {
+                  setScanning(false);
+                }
+              },
+              () => {} // Silent error handling
+            );
+
+            setScannerStarted(true);
+          } catch (err) {
+            console.error("Failed to start scanner", err);
+            toast.error("Failed to start camera. Please check permissions.");
+          }
+        };
+
+        startScanner();
       })
       .catch(() => {
         navigate("/identify");
       });
 
-    const html5QrCode = new Html5Qrcode(SCANNER_ID, {
-      verbose: false,
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-    });
-    setScanner(html5QrCode);
-
-    const startScanner = async () => {
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1,
-          },
-          async (decodedText) => {
-            if (scanning) return;
-
-            setScanning(true);
-            try {
-              await html5QrCode.pause();
-
-              const attendee = await getAttendeeById(decodedText);
-              if (!attendee) {
-                toast.error("Invalid QR code");
-                setScanning(false);
-                return;
-              }
-
-              if (attendee.checked_in) {
-                toast.error("Attendee is already checked in!");
-                setScanning(false);
-                return;
-              }
-
-              await checkInAttendee(decodedText);
-              toast.success(`✅ ${attendee.name} has been checked in!`);
-            } catch (error) {
-              console.error("Failed to check in attendee", error);
-              toast.error("Failed to check in attendee");
-            } finally {
-              setScanning(false);
-            }
-          },
-          () => {} // Silent error handling
-        );
-
-        setScannerStarted(true);
-      } catch (err) {
-        console.error("Failed to start scanner", err);
-        toast.error("Failed to start camera. Please check permissions.");
-      }
-    };
-
-    startScanner();
-
     return () => {
-      if (scannerStarted) {
-        html5QrCode.stop().catch(() => {});
-      }
-      try {
-        html5QrCode.clear();
-      } catch (error) {
-        console.error("Failed to clear scanner", error);
+      if (scanner) {
+        if (scannerStarted) {
+          scanner.stop().catch(() => {});
+        }
+        try {
+          scanner.clear();
+        } catch (err) {
+          console.error("Failed to clear scanner", err);
+        }
       }
     };
-  }, [navigate, scannerStarted, scanning]);
+  }, [navigate, scanner, scanning, scannerStarted]);
 
   const resumeScan = async () => {
     if (!scanner) return;

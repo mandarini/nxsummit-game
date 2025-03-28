@@ -1,7 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, type Attendee } from "../lib/supabase";
-import { isSuperAdmin, isGameOn, toggleGame } from "../lib/auth";
+import {
+  isSuperAdmin,
+  isGameOn,
+  toggleGame,
+  requireStaffAccess,
+} from "../lib/auth";
 import toast from "react-hot-toast";
 import AdminHeader from "../components/admin/AdminHeader";
 import AdminActions from "../components/admin/AdminActions";
@@ -33,7 +38,7 @@ export default function AdminPage() {
         window.scrollTo(0, scrollPosition.current);
       }, 0);
     } catch (error) {
-      console.error("Error loading attendees:", error);
+      console.error("Failed to load attendees:", error);
       toast.error("Failed to load attendees");
     } finally {
       setLoading(false);
@@ -42,17 +47,30 @@ export default function AdminPage() {
 
   useEffect(() => {
     const attendeeId = localStorage.getItem("attendeeId");
-    if (!attendeeId) {
+    const staffAccessGranted = localStorage.getItem("staff_access_granted");
+
+    if (!attendeeId || staffAccessGranted !== "true") {
       navigate("/identify");
       return;
     }
 
-    // Load current user and game state
+    // Load current user and verify staff access
     Promise.all([
       supabase.from("attendees").select().eq("id", attendeeId).single(),
       isGameOn(),
     ])
-      .then(([{ data: attendee }, gameState]) => {
+      .then(async ([{ data: attendee }, gameState]) => {
+        if (!attendee) {
+          navigate("/identify");
+          return;
+        }
+
+        const hasAccess = await requireStaffAccess(attendee);
+        if (!hasAccess) {
+          navigate("/identify");
+          return;
+        }
+
         setCurrentUser(attendee);
         setGameEnabled(gameState);
         loadAttendees();
@@ -86,7 +104,7 @@ export default function AdminPage() {
       toast.success(`Added ${points} points successfully!`);
       await loadAttendees();
     } catch (error) {
-      console.error("Error adding points:", error);
+      console.error("Failed to add points:", error);
       toast.error("Failed to add points");
     }
   };
@@ -111,7 +129,7 @@ export default function AdminPage() {
         `Attendee ${currentStatus ? "checked out" : "checked in"} successfully!`
       );
     } catch (error) {
-      console.error("Error toggling check-in:", error);
+      console.error("Failed to toggle check-in:", error);
       toast.error(
         `Failed to ${currentStatus ? "check out" : "check in"} attendee`
       );

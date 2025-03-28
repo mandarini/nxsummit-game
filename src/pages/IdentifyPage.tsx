@@ -27,9 +27,14 @@ export default function IdentifyPage() {
       const staffStatus = await isStaffMember(email);
 
       if (staffStatus) {
-        setShowPasswordInput(true);
-        if (!password) {
+        if (!showPasswordInput) {
+          setShowPasswordInput(true);
           setLoading(false);
+          return;
+        }
+
+        if (!password) {
+          toast.error("Staff password is required");
           return;
         }
 
@@ -38,21 +43,43 @@ export default function IdentifyPage() {
           toast.error("Invalid staff password");
           return;
         }
-      }
 
-      localStorage.setItem("attendeeId", attendee.id);
-      localStorage.setItem("isStaff", String(staffStatus));
-
-      if (staffStatus) {
+        localStorage.setItem("staff_access_granted", "true");
+        localStorage.setItem("attendeeId", attendee.id);
         navigate("/admin");
-      } else {
-        navigate(`/ticket?email=${encodeURIComponent(email)}`);
+        return;
       }
+
+      // Non-staff attendee
+      localStorage.setItem("attendeeId", attendee.id);
+      navigate(`/ticket?email=${encodeURIComponent(email)}`);
     } catch (error) {
-      console.error("Error identifying attendee", error);
+      console.error("Failed to identify:", error);
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTicketAccess = async () => {
+    try {
+      const attendee = await getAttendeeByEmail(email);
+      if (!attendee) {
+        toast.error("Email not found. Please check and try again.");
+        return;
+      }
+
+      // Clear staff-related state and storage
+      setShowPasswordInput(false);
+      setPassword("");
+      localStorage.removeItem("staff_access_granted");
+
+      // Set attendee ID and navigate to ticket
+      localStorage.setItem("attendeeId", attendee.id);
+      navigate(`/ticket?email=${encodeURIComponent(email)}`);
+    } catch (error) {
+      console.error("Failed to access ticket:", error);
+      toast.error("Something went wrong. Please try again.");
     }
   };
 
@@ -102,17 +129,29 @@ export default function IdentifyPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-          >
-            {loading
-              ? "Loading..."
-              : showPasswordInput
-              ? "Verify Staff Access"
-              : "Access Ticket"}
-          </button>
+          <div className="space-y-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              {loading
+                ? "Loading..."
+                : showPasswordInput
+                ? "Verify Staff Access"
+                : "Access Ticket"}
+            </button>
+
+            {showPasswordInput && (
+              <button
+                type="button"
+                onClick={handleTicketAccess}
+                className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Access Ticket Instead
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>
