@@ -7,6 +7,7 @@ import {
   getAttendeeById,
   type Attendee,
 } from "../lib/supabase";
+import { isGameOn } from "../lib/auth";
 import toast from "react-hot-toast";
 
 export default function TicketPage() {
@@ -14,6 +15,7 @@ export default function TicketPage() {
   const navigate = useNavigate();
   const [attendee, setAttendee] = useState<Attendee | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gameEnabled, setGameEnabled] = useState(false);
 
   useEffect(() => {
     async function loadAttendee() {
@@ -44,6 +46,8 @@ export default function TicketPage() {
         }
 
         setAttendee(foundAttendee);
+        const gameState = await isGameOn();
+        setGameEnabled(gameState);
       } catch (error) {
         console.error(error);
         toast.error("Failed to load ticket information");
@@ -81,7 +85,7 @@ export default function TicketPage() {
         <Home size={18} />
         <span className="text-sm">Switch User</span>
       </button>
-      
+
       <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -98,7 +102,7 @@ export default function TicketPage() {
         </div>
 
         <div className="space-y-4">
-          {attendee.checked_in && (
+          {attendee.checked_in && gameEnabled && (
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center">
                 <Trophy className="text-yellow-500 mr-3" size={24} />
@@ -132,7 +136,7 @@ export default function TicketPage() {
             </span>
           </div>
 
-          {attendee.checked_in && (
+          {attendee.checked_in && gameEnabled && (
             <button
               onClick={() => navigate("/scan")}
               className="w-full flex items-center justify-center space-x-2 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors"

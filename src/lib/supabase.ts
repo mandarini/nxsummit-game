@@ -12,7 +12,7 @@ export interface Attendee {
   checked_in: boolean;
   points: number;
   value: number;
-  role: "attendee" | "staff";
+  role: "attendee" | "staff" | "super_admin";
   created_at: string;
 }
 
