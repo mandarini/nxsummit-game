@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
-import { Trophy, QrCode, Scan } from 'lucide-react';
-import { getAttendeeByEmail, getAttendeeById, type Attendee } from '../lib/supabase';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
+import { Trophy, QrCode, Scan } from "lucide-react";
+import {
+  getAttendeeByEmail,
+  getAttendeeById,
+  type Attendee,
+} from "../lib/supabase";
+import toast from "react-hot-toast";
 
 export default function TicketPage() {
   const [searchParams] = useSearchParams();
@@ -14,34 +18,35 @@ export default function TicketPage() {
   useEffect(() => {
     async function loadAttendee() {
       try {
-        const id = searchParams.get('id');
-        const email = searchParams.get('email');
-        const storedId = localStorage.getItem('attendeeId');
+        const id = searchParams.get("id");
+        const email = searchParams.get("email");
+        const storedId = localStorage.getItem("attendeeId");
 
         let foundAttendee: Attendee | null = null;
 
         if (id) {
           foundAttendee = await getAttendeeById(id);
           if (foundAttendee) {
-            localStorage.setItem('attendeeId', id);
+            localStorage.setItem("attendeeId", id);
           }
         } else if (email) {
           foundAttendee = await getAttendeeByEmail(email);
           if (foundAttendee) {
-            localStorage.setItem('attendeeId', foundAttendee.id);
+            localStorage.setItem("attendeeId", foundAttendee.id);
           }
         } else if (storedId) {
           foundAttendee = await getAttendeeById(storedId);
         }
 
         if (!foundAttendee) {
-          navigate('/identify');
+          navigate("/identify");
           return;
         }
 
         setAttendee(foundAttendee);
       } catch (error) {
-        toast.error('Failed to load ticket information');
+        console.error(error);
+        toast.error("Failed to load ticket information");
       } finally {
         setLoading(false);
       }
@@ -66,7 +71,9 @@ export default function TicketPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Nx Summit Ticket</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Your Nx Summit Ticket
+          </h1>
           <p className="text-gray-600">{attendee.name}</p>
           <p className="text-gray-500 text-sm">{attendee.email}</p>
         </div>
@@ -78,37 +85,41 @@ export default function TicketPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <Trophy className="text-yellow-500 mr-3" size={24} />
-              <div>
-                <p className="font-medium">Points</p>
-                <p className="text-gray-500 text-sm">Your current score</p>
+          {attendee.checked_in && (
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center">
+                <Trophy className="text-yellow-500 mr-3" size={24} />
+                <div>
+                  <p className="font-medium">Points</p>
+                  <p className="text-gray-500 text-sm">Your current score</p>
+                </div>
               </div>
+              <span className="text-2xl font-bold">{attendee.points}</span>
             </div>
-            <span className="text-2xl font-bold">{attendee.points}</span>
-          </div>
+          )}
 
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center">
               <QrCode className="text-purple-500 mr-3" size={24} />
               <div>
                 <p className="font-medium">Status</p>
-                <p className="text-gray-500 text-sm">Check-in required to play</p>
+                <p className="text-gray-500 text-sm">Check-in required</p>
               </div>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              attendee.checked_in 
-                ? 'bg-green-100 text-green-800'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {attendee.checked_in ? 'Checked In' : 'Not Checked In'}
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                attendee.checked_in
+                  ? "bg-green-100 text-green-800"
+                  : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {attendee.checked_in ? "Checked In" : "Not Checked In"}
             </span>
           </div>
 
           {attendee.checked_in && (
             <button
-              onClick={() => navigate('/scan')}
+              onClick={() => navigate("/scan")}
               className="w-full flex items-center justify-center space-x-2 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors"
             >
               <Scan size={20} />
