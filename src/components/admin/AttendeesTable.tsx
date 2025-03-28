@@ -72,14 +72,14 @@ export default function AttendeesTable({
                     {attendee.value}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-4">
                       <button
                         onClick={() =>
                           setExpandedRow(
                             expandedRow === attendee.id ? null : attendee.id
                           )
                         }
-                        className="text-purple-600 hover:text-purple-800 flex items-center"
+                        className="text-purple-600 hover:text-purple-800 flex items-center px-3 py-1 rounded-md hover:bg-purple-50"
                       >
                         {expandedRow === attendee.id ? (
                           <>
@@ -93,14 +93,16 @@ export default function AttendeesTable({
                           </>
                         )}
                       </button>
+                      <div className="w-px h-6 bg-gray-200" />{" "}
+                      {/* Vertical divider */}
                       <button
                         onClick={() =>
                           onToggleCheckIn(attendee.id, attendee.checked_in)
                         }
-                        className={`flex items-center ${
+                        className={`flex items-center px-3 py-1 rounded-md ${
                           attendee.checked_in
-                            ? "text-red-600 hover:text-red-800"
-                            : "text-green-600 hover:text-green-800"
+                            ? "text-red-600 hover:text-red-800 hover:bg-red-50"
+                            : "text-green-600 hover:text-green-800 hover:bg-green-50"
                         }`}
                       >
                         {attendee.checked_in ? (
