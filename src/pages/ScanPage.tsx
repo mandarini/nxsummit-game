@@ -8,13 +8,25 @@ import toast from "react-hot-toast";
 export default function ScanPage() {
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
 
   useEffect(() => {
-    const attendeeId = localStorage.getItem("attendeeId");
+    const attendeeId = sessionStorage.getItem("attendeeId");
     if (!attendeeId) {
       navigate("/identify");
       return;
     }
+
+    // Request camera permission explicitly
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then(() => setHasPermission(true))
+      .catch(() => {
+        toast.error("Camera permission is required for scanning");
+        navigate("/ticket");
+      });
+
+    if (!hasPermission) return;
 
     const scanner = new Html5QrcodeScanner(
       "reader",
@@ -24,8 +36,12 @@ export default function ScanPage() {
           height: 250,
         },
         fps: 5,
+        videoConstraints: {
+          facingMode: "environment",
+        },
+        rememberLastUsedCamera: false, // Don't store camera preferences
       },
-      /* verbose */ true
+      true
     );
 
     scanner.render(
@@ -51,8 +67,11 @@ export default function ScanPage() {
           toast.success(
             `🎉 You scanned ${scannedAttendee.name}! +${scannedAttendee.value} point(s)`
           );
-        } catch (error: any) {
-          if (error.message?.includes("scans_scanner_id_scanned_id_key")) {
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message?.includes("scans_scanner_id_scanned_id_key")
+          ) {
             toast.error("You've already scanned this person!");
           } else {
             toast.error("Failed to record scan");
@@ -69,7 +88,7 @@ export default function ScanPage() {
     return () => {
       scanner.clear();
     };
-  }, [navigate]);
+  }, [navigate, hasPermission]);
 
   return (
     <div className="min-h-screen p-4">
@@ -84,14 +103,19 @@ export default function ScanPage() {
 
         <div className="bg-white rounded-xl shadow-xl p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Scan QR Code</h1>
-          <div
-            id="reader"
-            className="mb-4"
-            style={{ width: "100%", height: "300px" }}
-          ></div>
-          <p className="text-center text-gray-600">
-            Point your camera at another attendee's QR code to collect points!
-          </p>
+          {hasPermission ? (
+            <>
+              <div id="reader" className="mb-4"></div>
+              <p className="text-center text-gray-600">
+                Point your camera at another attendee's QR code to collect
+                points!
+              </p>
+            </>
+          ) : (
+            <p className="text-center text-gray-600">
+              Camera permission is required for scanning QR codes.
+            </p>
+          )}
         </div>
       </div>
     </div>
