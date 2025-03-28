@@ -7,7 +7,7 @@ import {
   getAttendeeById,
   type Attendee,
 } from "../lib/supabase";
-import { isGameOn } from "../lib/auth";
+import { isGameOn, isStaff } from "../lib/auth";
 import toast from "react-hot-toast";
 
 export default function TicketPage() {
@@ -73,18 +73,20 @@ export default function TicketPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <button
-        onClick={() => {
-          localStorage.removeItem("attendeeId");
-          localStorage.removeItem("isStaff");
-          navigate("/identify");
-        }}
-        className="absolute top-4 left-4 text-white/50 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
-        title="Sign in as someone else"
-      >
-        <Home size={18} />
-        <span className="text-sm">Switch User</span>
-      </button>
+      {isStaff(attendee) && (
+        <button
+          onClick={() => {
+            localStorage.removeItem("attendeeId");
+            localStorage.removeItem("isStaff");
+            navigate("/identify");
+          }}
+          className="absolute top-4 left-4 text-white/50 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
+          title="Sign in as someone else"
+        >
+          <Home size={18} />
+          <span className="text-sm">Switch User</span>
+        </button>
+      )}
 
       <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
