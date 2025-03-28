@@ -124,20 +124,33 @@ export default function ScanPage() {
 
         <div className="bg-white rounded-xl shadow-xl p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Scan QR Code</h1>
-          <div id="reader" className="mb-4" style={{ height: "300px" }}></div>
+          
+          {/* Scanner container with fixed height and overflow handling */}
+          <div className="relative mb-6">
+            <div 
+              id="reader" 
+              className="w-full"
+              style={{ 
+                minHeight: "300px",
+                maxHeight: "400px"
+              }}
+            ></div>
+          </div>
 
-          <p className="text-center text-gray-600 mb-4">
-            Point your camera at another attendee's QR code to collect points!
-          </p>
+          <div className="space-y-4">
+            <p className="text-center text-gray-600">
+              Point your camera at another attendee's QR code to collect points!
+            </p>
 
-          {scanner && !scanning && (
-            <button
-              className="block mx-auto bg-black text-white py-2 px-4 rounded"
-              onClick={resumeScan}
-            >
-              Scan Another QR Code
-            </button>
-          )}
+            {scanner && !scanning && (
+              <button
+                className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"
+                onClick={resumeScan}
+              >
+                Scan Another QR Code
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
