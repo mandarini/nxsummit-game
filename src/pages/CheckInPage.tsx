@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { ArrowLeft } from "lucide-react";
 import { checkInAttendee, getAttendeeById } from "../lib/supabase";
+import { isStaff } from "../lib/auth";
 import toast from "react-hot-toast";
 
-// Define this outside your component
 const SCANNER_ID = "reader";
 
 export default function CheckInPage() {
   const navigate = useNavigate();
   const [scanner, setScanner] = useState<Html5Qrcode | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [scannerStarted, setScannerStarted] = useState(false);
 
   useEffect(() => {
     const attendeeId = localStorage.getItem("attendeeId");
@@ -23,7 +25,7 @@ export default function CheckInPage() {
     // Verify the staff member exists and has proper access
     getAttendeeById(attendeeId)
       .then((attendee) => {
-        if (!attendee || attendee.role !== "staff") {
+        if (!attendee || !isStaff(attendee)) {
           navigate("/identify");
         }
       })
@@ -31,23 +33,28 @@ export default function CheckInPage() {
         navigate("/identify");
       });
 
-    const html5QrCode = new Html5Qrcode(SCANNER_ID);
+    const html5QrCode = new Html5Qrcode(SCANNER_ID, {
+      verbose: false,
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+    });
+    setScanner(html5QrCode);
 
     const startScanner = async () => {
       try {
         await html5QrCode.start(
           { facingMode: "environment" },
           {
-            fps: 5,
+            fps: 10,
             qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
           },
           async (decodedText) => {
             if (scanning) return;
 
             setScanning(true);
-            await html5QrCode.pause(); // ✅ stop scanning immediately
-
             try {
+              await html5QrCode.pause();
+
               const attendee = await getAttendeeById(decodedText);
               if (!attendee) {
                 toast.error("Invalid QR code");
@@ -64,38 +71,46 @@ export default function CheckInPage() {
               await checkInAttendee(decodedText);
               toast.success(`✅ ${attendee.name} has been checked in!`);
             } catch (error) {
-              console.error(error);
+              console.error("Failed to check in attendee", error);
               toast.error("Failed to check in attendee");
             } finally {
               setScanning(false);
             }
           },
-          (errorMessage) => {
-            console.warn("QR Code scan error:", errorMessage);
-          }
+          () => {} // Silent error handling
         );
 
-        setScanner(html5QrCode);
+        setScannerStarted(true);
       } catch (err) {
         console.error("Failed to start scanner", err);
+        toast.error("Failed to start camera. Please check permissions.");
       }
     };
 
     startScanner();
 
     return () => {
-      html5QrCode.stop();
-      html5QrCode.clear();
+      if (scannerStarted) {
+        html5QrCode.stop().catch(() => {});
+      }
+      try {
+        html5QrCode.clear();
+      } catch (error) {
+        console.error("Failed to clear scanner", error);
+      }
     };
-  }, [navigate]);
+  }, [navigate, scannerStarted, scanning]);
 
   const resumeScan = async () => {
     if (!scanner) return;
 
     try {
+      setIsActive(true);
       await scanner.resume();
+      setTimeout(() => setIsActive(false), 200);
     } catch (err) {
       console.error("Failed to resume scanner", err);
+      setIsActive(false);
     }
   };
 
@@ -115,26 +130,30 @@ export default function CheckInPage() {
             Check In Scanner
           </h1>
 
-          {/* Scanner container with fixed height and overflow handling */}
-          <div className="relative mb-6">
+          <p className="text-center text-gray-600 mb-4">
+            Point your camera at an attendee's QR code to check them in
+          </p>
+
+          <div className="mb-6">
             <div
-              id="reader"
-              className="w-full"
+              id={SCANNER_ID}
+              className="overflow-hidden rounded-lg"
               style={{
-                minHeight: "300px",
-                maxHeight: "400px",
+                width: "100%",
+                maxWidth: "100%",
+                height: "300px",
               }}
             ></div>
           </div>
 
-          <div className="space-y-4">
-            <p className="text-center text-gray-600">
-              Point your camera at an attendee's QR code to check them in
-            </p>
-
+          <div className="mt-6">
             {scanner && !scanning && (
               <button
-                className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"
+                className={`w-full bg-black text-white py-3 px-4 rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? "transform scale-95 bg-gray-800 ring-2 ring-purple-500 ring-offset-2"
+                    : "hover:bg-gray-800 hover:shadow-lg"
+                }`}
                 onClick={resumeScan}
               >
                 Scan Another QR Code
