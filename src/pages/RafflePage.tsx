@@ -66,35 +66,6 @@ export default function RafflePage() {
     }
   };
 
-  const drawWeightedWinner = () => {
-    const random = Math.random() * totalPoints;
-    let sum = 0;
-
-    for (const attendee of eligibleAttendees) {
-      sum += attendee.points;
-      if (random <= sum) {
-        return attendee;
-      }
-    }
-
-    return eligibleAttendees[eligibleAttendees.length - 1];
-  };
-
-  const drawSharesWinner = () => {
-    const pool: string[] = [];
-
-    // Add each attendee to the pool once per point
-    eligibleAttendees.forEach((attendee) => {
-      for (let i = 0; i < attendee.points; i++) {
-        pool.push(attendee.id);
-      }
-    });
-
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    const winnerId = pool[randomIndex];
-    return eligibleAttendees.find((a) => a.id === winnerId)!;
-  };
-
   const drawWinner = async () => {
     if (eligibleAttendees.length === 0) {
       toast.error("No eligible attendees remaining");
@@ -103,60 +74,53 @@ export default function RafflePage() {
 
     setDrawing(true);
 
-    // Simulate drawing animation
-    setTimeout(async () => {
-      try {
-        const winner =
-          raffleType === "weighted" ? drawWeightedWinner() : drawSharesWinner();
-
-        // Record the winner using the Edge Function
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_SUPABASE_URL
-          }/functions/v1/create-raffle-winner`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              attendeeId: localStorage.getItem("attendeeId"),
-              winnerId: winner.id,
-              raffleType,
-            }),
-          }
-        );
-
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
-
-        // Add to winners list
-        setWinners((prev) => [
-          ...prev,
-          {
-            attendee: winner,
-            type: raffleType,
-            timestamp: new Date().toISOString(),
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/draw-raffle-winner`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
-        ]);
-
-        // Remove winner from eligible pool if repeat winners aren't allowed
-        if (!allowRepeatWinners) {
-          setEligibleAttendees((prev) =>
-            prev.filter((a) => a.id !== winner.id)
-          );
-          setTotalPoints((prev) => prev - winner.points);
+          body: JSON.stringify({
+            attendeeId: localStorage.getItem("attendeeId"),
+            raffleType,
+          }),
         }
+      );
 
-        toast.success(`🎉 Winner drawn: ${winner.name}!`);
-      } catch (error) {
-        console.error("Error drawing winner:", error);
-        toast.error("Failed to record winner");
-      } finally {
-        setDrawing(false);
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error);
       }
-    }, 4000);
+
+      const winner = data.winner;
+
+      // Add to winners list
+      setWinners((prev) => [
+        ...prev,
+        {
+          attendee: winner,
+          type: raffleType,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+
+      // Remove winner from eligible pool if repeat winners aren't allowed
+      if (!allowRepeatWinners) {
+        setEligibleAttendees((prev) => prev.filter((a) => a.id !== winner.id));
+        setTotalPoints((prev) => prev - winner.points);
+      }
+
+      toast.success(`🎉 Winner drawn: ${winner.name}!`);
+    } catch (error) {
+      console.error("Error drawing winner:", error);
+      toast.error("Failed to draw winner");
+    } finally {
+      setDrawing(false);
+    }
   };
 
   if (loading) {
