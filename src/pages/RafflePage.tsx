@@ -17,6 +17,8 @@ export default function RafflePage() {
   const [raffleType, setRaffleType] = useState<RaffleType>("weighted");
   const [allowRepeatWinners, setAllowRepeatWinners] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
+  const [spinnerRotation, setSpinnerRotation] = useState(0);
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const attendeeId = localStorage.getItem("attendeeId");
@@ -66,6 +68,41 @@ export default function RafflePage() {
     }
   };
 
+  const animateRaffle = async () => {
+    const duration = 5000; // 5 seconds
+    const startTime = Date.now();
+    const startRotation = spinnerRotation;
+    const totalRotations = 5; // Number of full rotations
+    const finalRotation = startRotation + 360 * totalRotations;
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Easing function for smooth deceleration
+      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+      const currentRotation =
+        startRotation + (finalRotation - startRotation) * easeOut(progress);
+
+      setSpinnerRotation(currentRotation);
+
+      // Highlight random attendees during animation
+      if (progress < 1) {
+        setHighlightedIndex(
+          Math.floor(Math.random() * eligibleAttendees.length)
+        );
+        requestAnimationFrame(animate);
+      } else {
+        setHighlightedIndex(null);
+      }
+    };
+
+    animate();
+
+    // Return a promise that resolves after the animation
+    return new Promise((resolve) => setTimeout(resolve, duration));
+  };
+
   const drawWinner = async () => {
     if (eligibleAttendees.length === 0) {
       toast.error("No eligible attendees remaining");
@@ -75,6 +112,9 @@ export default function RafflePage() {
     setDrawing(true);
 
     try {
+      // Start the animation
+      await animateRaffle();
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/draw-raffle-winner`,
         {
@@ -120,6 +160,7 @@ export default function RafflePage() {
       toast.error("Failed to draw winner");
     } finally {
       setDrawing(false);
+      setHighlightedIndex(null);
     }
   };
 
@@ -235,6 +276,34 @@ export default function RafflePage() {
                     <pre className="text-sm font-mono bg-white p-3 rounded border border-gray-200">
                       P(winner) = points / {totalPoints}
                     </pre>
+                  </div>
+                )}
+
+                {/* Raffle Wheel Animation */}
+                {drawing && (
+                  <div className="relative h-48 bg-gray-50 rounded-lg overflow-hidden">
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ transform: `rotate(${spinnerRotation}deg)` }}
+                    >
+                      <div className="w-1 h-full bg-purple-600 absolute top-0"></div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        {highlightedIndex !== null &&
+                          eligibleAttendees[highlightedIndex] && (
+                            <div className="animate-pulse">
+                              <div className="text-xl font-bold text-purple-600">
+                                {eligibleAttendees[highlightedIndex].name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {eligibleAttendees[highlightedIndex].points}{" "}
+                                points
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    </div>
                   </div>
                 )}
 
