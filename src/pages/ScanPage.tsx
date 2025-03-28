@@ -2,7 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { ArrowLeft } from "lucide-react";
-import { getAttendeeById, recordScan, incrementPoints } from "../lib/supabase";
+import {
+  getAttendeeById,
+  recordScan,
+  incrementPoints,
+  getBonusCode,
+  claimBonusPoints,
+} from "../lib/supabase";
 import toast from "react-hot-toast";
 
 const SCANNER_ID = "reader";
@@ -62,27 +68,47 @@ export default function ScanPage() {
                 return;
               }
 
+              // First try to match as an attendee
               const scannedAttendee = await getAttendeeById(decodedText);
-              if (!scannedAttendee) {
-                toast.error("Invalid QR code");
-                setScanning(false);
-                return;
-              }
 
-              await recordScan(attendeeId, decodedText);
-              await incrementPoints(attendeeId, scannedAttendee.value);
-
-              toast.success(
-                `🎉 You scanned ${scannedAttendee.name}! +${scannedAttendee.value} point(s)`
-              );
-            } catch (error) {
-              if (
-                error instanceof Error &&
-                error.message?.includes("scans_scanner_id_scanned_id_key")
-              ) {
-                toast.error("You've already scanned this person!");
+              if (scannedAttendee) {
+                try {
+                  await recordScan(attendeeId, decodedText);
+                  await incrementPoints(attendeeId, scannedAttendee.value);
+                  toast.success(
+                    `🎉 You scanned ${scannedAttendee.name}! +${scannedAttendee.value} point(s)`
+                  );
+                } catch (error) {
+                  if (
+                    error instanceof Error &&
+                    error.message?.includes("scans_scanner_id_scanned_id_key")
+                  ) {
+                    toast.error("You've already scanned this person!");
+                  } else {
+                    toast.error("Failed to record scan");
+                  }
+                }
               } else {
-                toast.error("Failed to record scan");
+                // Try to match as a bonus code
+                const bonusCode = await getBonusCode(decodedText);
+
+                if (bonusCode) {
+                  const claimed = await claimBonusPoints(
+                    attendeeId,
+                    decodedText
+                  );
+                  if (claimed) {
+                    toast.success(
+                      `🎉 Bonus points claimed! +${bonusCode.points} points\n${bonusCode.description}`
+                    );
+                  } else {
+                    toast.error(
+                      "This bonus code has already been claimed or reached its limit!"
+                    );
+                  }
+                } else {
+                  toast.error("Invalid QR code");
+                }
               }
             } finally {
               setScanning(false);

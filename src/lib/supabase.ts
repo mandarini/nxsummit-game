@@ -23,6 +23,20 @@ export interface Scan {
   timestamp: string;
 }
 
+export interface BonusCode {
+  code: string;
+  description: string;
+  points: number;
+  max_claims: number | null;
+}
+
+export interface BonusClaim {
+  id: string;
+  attendee_id: string;
+  bonus_code: string;
+  claimed_at: string;
+}
+
 export async function getAttendeeByEmail(
   email: string
 ): Promise<Attendee | null> {
@@ -80,4 +94,28 @@ export async function checkInAttendee(attendeeId: string): Promise<void> {
     .eq("id", attendeeId);
 
   if (error) throw error;
+}
+
+export async function getBonusCode(code: string): Promise<BonusCode | null> {
+  const { data, error } = await supabase
+    .from("bonus_codes")
+    .select()
+    .eq("code", code)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function claimBonusPoints(
+  attendeeId: string,
+  bonusCode: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("claim_bonus_points", {
+    p_attendee_id: attendeeId,
+    p_bonus_code: bonusCode,
+  });
+
+  if (error) throw error;
+  return data;
 }
