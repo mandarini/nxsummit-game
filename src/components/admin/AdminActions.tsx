@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, RefreshCcw, QrCode, Power } from "lucide-react";
+import { Download, RefreshCcw, QrCode, Power, Gift } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Attendee } from "../../lib/supabase";
 
@@ -23,19 +23,28 @@ export default function AdminActions({
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       {isSuperAdmin(currentUser) && (
-        <button
-          onClick={onGameToggle}
-          className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors ${
-            gameEnabled
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-green-500 hover:bg-green-600"
-          } text-white`}
-        >
-          <Power size={18} className="mr-2" />
-          {gameEnabled ? "Disable Game" : "Enable Game"}
-        </button>
+        <>
+          <button
+            onClick={onGameToggle}
+            className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors ${
+              gameEnabled
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-green-500 hover:bg-green-600"
+            } text-white`}
+          >
+            <Power size={18} className="mr-2" />
+            {gameEnabled ? "Disable Game" : "Enable Game"}
+          </button>
+          <button
+            onClick={() => navigate("/raffle")}
+            className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors flex items-center justify-center"
+          >
+            <Gift size={18} className="mr-2" />
+            Raffle Drawing
+          </button>
+        </>
       )}
       <button
         onClick={() => navigate("/checkin")}

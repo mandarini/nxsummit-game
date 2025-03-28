@@ -6,6 +6,7 @@ import IdentifyPage from "./pages/IdentifyPage";
 import ScanPage from "./pages/ScanPage";
 import AdminPage from "./pages/AdminPage";
 import CheckInPage from "./pages/CheckInPage";
+import RafflePage from "./pages/RafflePage";
 import StaffRoute from "./components/StaffRoute";
 
 function App() {
@@ -29,6 +30,14 @@ function App() {
             element={
               <StaffRoute>
                 <CheckInPage />
+              </StaffRoute>
+            }
+          />
+          <Route
+            path="/raffle"
+            element={
+              <StaffRoute>
+                <RafflePage />
               </StaffRoute>
             }
           />
