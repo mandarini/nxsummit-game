@@ -10,6 +10,27 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false);
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
 
+  useEffect(() => {
+    const attendeeId = localStorage.getItem("attendeeId");
+    if (!attendeeId) {
+      navigate("/identify");
+      return;
+    }
+
+    // Verify the attendee exists
+    getAttendeeById(attendeeId)
+      .then((attendee) => {
+        if (!attendee) {
+          navigate("/identify");
+        } else if (!attendee.checked_in) {
+          navigate("/ticket");
+        }
+      })
+      .catch(() => {
+        navigate("/identify");
+      });
+  }, [navigate]);
+
   const startScanning = () => {
     const attendeeId = localStorage.getItem("attendeeId");
     if (!attendeeId) {
@@ -111,7 +132,7 @@ export default function ScanPage() {
 
         <div className="bg-white rounded-xl shadow-xl p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Scan QR Code</h1>
-          
+
           <div id="reader" className="mb-6"></div>
 
           <div className="flex justify-center">
