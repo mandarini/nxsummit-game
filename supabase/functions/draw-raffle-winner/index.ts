@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const { data: eligibleAttendees, error: attendeesError } = await supabase
       .from('attendees')
       .select('id, name, points')
-      .gt('points', 1)
+      .gt('points', 0)
       .eq('checked_in', true)
       .not('role', 'in', '("staff","super_admin")');
 
