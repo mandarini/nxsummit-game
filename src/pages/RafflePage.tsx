@@ -25,8 +25,8 @@ export default function RafflePage() {
       return;
     }
 
+    // Verify super_admin status
     try {
-      // Load current user and verify super_admin status
       supabase
         .from("attendees")
         .select()
@@ -39,8 +39,7 @@ export default function RafflePage() {
           }
           loadEligibleAttendees();
         });
-    } catch (error) {
-      console.error("Error loading user:", error);
+    } catch {
       navigate("/admin");
     }
   }, [navigate]);
@@ -110,13 +109,27 @@ export default function RafflePage() {
         const winner =
           raffleType === "weighted" ? drawWeightedWinner() : drawSharesWinner();
 
-        // Record the winner
-        const { error } = await supabase.from("raffle_winners").insert({
-          attendee_id: winner.id,
-          raffle_type: raffleType,
-        });
+        // Record the winner using the Edge Function
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_SUPABASE_URL
+          }/functions/v1/create-raffle-winner`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              attendeeId: localStorage.getItem("attendeeId"),
+              winnerId: winner.id,
+              raffleType,
+            }),
+          }
+        );
 
-        if (error) throw error;
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
 
         // Add to winners list
         setWinners((prev) => [
