@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { ArrowLeft, Scan, StopCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getAttendeeById, recordScan, incrementPoints } from "../lib/supabase";
 import toast from "react-hot-toast";
 
 export default function ScanPage() {
   const navigate = useNavigate();
-  const [scanning, setScanning] = useState(false);
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -29,14 +28,6 @@ export default function ScanPage() {
       .catch(() => {
         navigate("/identify");
       });
-  }, [navigate]);
-
-  const startScanning = () => {
-    const attendeeId = localStorage.getItem("attendeeId");
-    if (!attendeeId) {
-      navigate("/identify");
-      return;
-    }
 
     const qrScanner = new Html5QrcodeScanner(
       "reader",
@@ -49,16 +40,12 @@ export default function ScanPage() {
         videoConstraints: {
           facingMode: "environment",
         },
-        rememberLastUsedCamera: false,
       },
       false
     );
 
     qrScanner.render(
       async (decodedText) => {
-        if (scanning) return;
-        setScanning(true);
-
         try {
           if (decodedText === attendeeId) {
             toast.error("You can't scan your own QR code!");
@@ -79,19 +66,17 @@ export default function ScanPage() {
           );
 
           // Stop scanning after successful scan
-          stopScanning();
+          qrScanner.clear();
         } catch (error) {
           if (
             error instanceof Error &&
             error.message?.includes("scans_scanner_id_scanned_id_key")
           ) {
             toast.error("You've already scanned this person!");
-            stopScanning();
+            qrScanner.clear();
           } else {
             toast.error("Failed to record scan");
           }
-        } finally {
-          setScanning(false);
         }
       },
       (error) => {
@@ -100,24 +85,13 @@ export default function ScanPage() {
     );
 
     setScanner(qrScanner);
-    setScanning(true);
-  };
 
-  const stopScanning = () => {
-    if (scanner) {
-      scanner.clear().catch(console.error);
-      setScanner(null);
-    }
-    setScanning(false);
-  };
-
-  useEffect(() => {
     return () => {
       if (scanner) {
         scanner.clear().catch(console.error);
       }
     };
-  }, [scanner]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen p-4">
@@ -132,33 +106,9 @@ export default function ScanPage() {
 
         <div className="bg-white rounded-xl shadow-xl p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Scan QR Code</h1>
-
-          <div id="reader" className="mb-6"></div>
-
-          <div className="flex justify-center">
-            {!scanning ? (
-              <button
-                onClick={startScanning}
-                className="flex items-center justify-center space-x-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Scan size={20} />
-                <span>Start Scanning</span>
-              </button>
-            ) : (
-              <button
-                onClick={stopScanning}
-                className="flex items-center justify-center space-x-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <StopCircle size={20} />
-                <span>Stop Scanning</span>
-              </button>
-            )}
-          </div>
-
-          <p className="text-center text-gray-600 mt-4">
-            {scanning
-              ? "Point your camera at another attendee's QR code"
-              : "Press Start Scanning to begin"}
+          <div id="reader" className="mb-4"></div>
+          <p className="text-center text-gray-600">
+            Point your camera at another attendee's QR code to collect points!
           </p>
         </div>
       </div>
