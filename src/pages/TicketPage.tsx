@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { Trophy, QrCode, Scan } from "lucide-react";
+import { Trophy, QrCode, Scan, Home } from "lucide-react";
 import {
   getAttendeeByEmail,
   getAttendeeById,
@@ -69,6 +69,19 @@ export default function TicketPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      <button
+        onClick={() => {
+          localStorage.removeItem("attendeeId");
+          localStorage.removeItem("isStaff");
+          navigate("/identify");
+        }}
+        className="absolute top-4 left-4 text-white/50 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
+        title="Sign in as someone else"
+      >
+        <Home size={18} />
+        <span className="text-sm">Switch User</span>
+      </button>
+      
       <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -103,7 +116,9 @@ export default function TicketPage() {
               <QrCode className="text-purple-500 mr-3" size={24} />
               <div>
                 <p className="font-medium">Status</p>
-                <p className="text-gray-500 text-sm">Check-in required</p>
+                {!attendee.checked_in && (
+                  <p className="text-gray-500 text-sm">Check-in required</p>
+                )}
               </div>
             </div>
             <span
