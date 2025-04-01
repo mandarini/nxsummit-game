@@ -63,7 +63,7 @@ export default function ScanPage() {
             setIsScanning(true);
 
             try {
-              // 🛑 Pause only if it's scanning
+              // 🛑 Pause only if actively scanning
               if (
                 html5QrCode.getState &&
                 html5QrCode.getState() === Html5QrcodeScannerState.SCANNING
@@ -77,7 +77,14 @@ export default function ScanPage() {
                 return;
               }
 
-              const scannedAttendee = await getAttendeeById(decodedText);
+              let scannedAttendee = null;
+
+              try {
+                scannedAttendee = await getAttendeeById(decodedText);
+              } catch {
+                // Not an attendee ID, will check for bonus next
+              }
+
               if (scannedAttendee) {
                 try {
                   await recordScan(attendeeId, decodedText);
@@ -96,20 +103,24 @@ export default function ScanPage() {
                   }
                 }
               } else {
-                const bonusCode = await getBonusCode(decodedText);
-                if (bonusCode) {
-                  const claimed = await claimBonusPoints(
-                    attendeeId,
-                    decodedText
-                  );
-                  if (claimed) {
-                    toast.success(
-                      `🎉 Bonus claimed! +${bonusCode.points} points\n${bonusCode.description}`
+                try {
+                  const bonusCode = await getBonusCode(decodedText);
+                  if (bonusCode) {
+                    const claimed = await claimBonusPoints(
+                      attendeeId,
+                      decodedText
                     );
+                    if (claimed) {
+                      toast.success(
+                        `🎉 Bonus claimed! +${bonusCode.points} points\n${bonusCode.description}`
+                      );
+                    } else {
+                      toast.error("Bonus code already claimed or maxed out.");
+                    }
                   } else {
-                    toast.error("Bonus code already claimed or maxed out.");
+                    toast.error("Invalid QR code");
                   }
-                } else {
+                } catch {
                   toast.error("Invalid QR code");
                 }
               }
@@ -118,7 +129,7 @@ export default function ScanPage() {
             }
           },
           () => {
-            // Silent error handling
+            // Silent scan failure
           }
         );
 

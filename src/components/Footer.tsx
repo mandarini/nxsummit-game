@@ -14,19 +14,29 @@ export default function Footer() {
   return (
     <footer className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 py-3">
-        <nav className="flex justify-center space-x-6">
-          <Link
-            to="/rules"
-            className="text-white/80 hover:text-white transition-colors text-sm"
-          >
-            Rules
-          </Link>
-          <Link
-            to="/info"
-            className="text-white/80 hover:text-white transition-colors text-sm"
-          >
-            About
-          </Link>
+        <nav className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-6">
+          <div className="flex space-x-6">
+            <Link
+              to="/rules"
+              className="text-white/80 hover:text-white transition-colors text-sm"
+            >
+              Rules
+            </Link>
+            <Link
+              to="/info"
+              className="text-white/80 hover:text-white transition-colors text-sm"
+            >
+              About
+            </Link>
+            <a
+              href="https://nx.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors text-sm"
+            >
+              nx.dev
+            </a>
+          </div>
         </nav>
       </div>
     </footer>
