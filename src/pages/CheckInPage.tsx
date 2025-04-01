@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { ArrowLeft } from "lucide-react";
@@ -10,118 +10,109 @@ const SCANNER_ID = "reader";
 
 export default function CheckInPage() {
   const navigate = useNavigate();
-  const [scanner, setScanner] = useState<Html5Qrcode | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [scannerReady, setScannerReady] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [isActive, setIsActive] = useState(false);
-  const [scannerStarted, setScannerStarted] = useState(false);
+  const [resumable, setResumable] = useState(false);
 
+  // Authenticate and initialize scanner
   useEffect(() => {
-    const attendeeId = localStorage.getItem("attendeeId");
-    const staffAccessGranted = localStorage.getItem("staff_access_granted");
+    const init = async () => {
+      const attendeeId = localStorage.getItem("attendeeId");
+      const staffAccessGranted = localStorage.getItem("staff_access_granted");
 
-    if (!attendeeId || staffAccessGranted !== "true") {
-      navigate("/identify");
-      return;
-    }
-
-    // Verify the staff member exists and has proper access
-    getAttendeeById(attendeeId)
-      .then(async (attendee) => {
-        if (!attendee) {
-          navigate("/identify");
-          return;
-        }
-
-        const hasAccess = await requireStaffAccess(attendee);
-        if (!hasAccess) {
-          navigate("/identify");
-          return;
-        }
-
-        const html5QrCode = new Html5Qrcode(SCANNER_ID, {
-          verbose: false,
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        });
-        setScanner(html5QrCode);
-
-        const startScanner = async () => {
-          try {
-            await html5QrCode.start(
-              { facingMode: "environment" },
-              {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1,
-              },
-              async (decodedText) => {
-                if (scanning) return;
-
-                setScanning(true);
-                try {
-                  await html5QrCode.pause();
-
-                  const attendee = await getAttendeeById(decodedText);
-                  if (!attendee) {
-                    toast.error("Invalid QR code");
-                    setScanning(false);
-                    return;
-                  }
-
-                  if (attendee.checked_in) {
-                    toast.error("Attendee is already checked in!");
-                    setScanning(false);
-                    return;
-                  }
-
-                  await checkInAttendee(decodedText);
-                  toast.success(`✅ ${attendee.name} has been checked in!`);
-                } catch (error) {
-                  console.error("Failed to check in attendee", error);
-                  toast.error("Failed to check in attendee");
-                } finally {
-                  setScanning(false);
-                }
-              },
-              () => {} // Silent error handling
-            );
-
-            setScannerStarted(true);
-          } catch (err) {
-            console.error("Failed to start scanner", err);
-            toast.error("Failed to start camera. Please check permissions.");
-          }
-        };
-
-        startScanner();
-      })
-      .catch(() => {
+      if (!attendeeId || staffAccessGranted !== "true") {
         navigate("/identify");
+        return;
+      }
+
+      const attendee = await getAttendeeById(attendeeId);
+      if (!attendee || !(await requireStaffAccess(attendee))) {
+        navigate("/identify");
+        return;
+      }
+
+      const html5QrCode = new Html5Qrcode(SCANNER_ID, {
+        verbose: false,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
       });
 
+      scannerRef.current = html5QrCode;
+
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+          },
+          async (decodedText) => {
+            if (scanning) return;
+
+            setScanning(true);
+            try {
+              await scannerRef.current?.pause();
+
+              const attendee = await getAttendeeById(decodedText);
+              if (!attendee) {
+                toast.error("Invalid QR code");
+              } else if (attendee.checked_in) {
+                toast.error("Attendee is already checked in!");
+              } else {
+                await checkInAttendee(decodedText);
+                toast.success(`✅ ${attendee.name} has been checked in!`);
+              }
+              setResumable(true);
+            } catch (error) {
+              console.error("Failed to check in attendee", error);
+              toast.error("Failed to check in attendee");
+              setResumable(true);
+            } finally {
+              setScanning(false);
+            }
+          },
+          () => {} // Silent scan errors
+        );
+
+        setScannerReady(true);
+      } catch (err) {
+        console.error("Failed to start scanner", err);
+        toast.error("Failed to start camera. Please check permissions.");
+      }
+    };
+
+    init();
+
     return () => {
-      if (scanner) {
-        if (scannerStarted) {
-          scanner.stop().catch(() => {});
-        }
+      const scanner = scannerRef.current;
+      if (scanner?.isScanning) {
+        scanner
+          .stop()
+          .then(() => scanner.clear())
+          .catch((err) => {
+            console.error("Error stopping scanner on unmount", err);
+          });
+      } else if (scanner) {
         try {
           scanner.clear();
         } catch (err) {
-          console.error("Failed to clear scanner", err);
+          console.error("Error clearing scanner on unmount", err);
         }
       }
     };
-  }, [navigate, scanner, scanning, scannerStarted]);
+  }, [navigate]);
 
   const resumeScan = async () => {
-    if (!scanner) return;
+    if (!scannerRef.current) return;
 
     try {
-      setIsActive(true);
-      await scanner.resume();
-      setTimeout(() => setIsActive(false), 200);
+      setResumable(false);
+      await scannerRef.current.resume();
     } catch (err) {
       console.error("Failed to resume scanner", err);
-      setIsActive(false);
+      toast.error("Failed to resume scanner");
+      setResumable(true);
     }
   };
 
@@ -142,35 +133,25 @@ export default function CheckInPage() {
           </h1>
 
           <p className="text-center text-gray-600 mb-4">
-            Point your camera at an attendee's QR code to check them in
+            Point your camera at an attendee's QR code to check them in.
           </p>
 
           <div className="mb-6">
             <div
               id={SCANNER_ID}
               className="overflow-hidden rounded-lg"
-              style={{
-                width: "100%",
-                maxWidth: "100%",
-                height: "300px",
-              }}
+              style={{ width: "100%", height: "300px" }}
             ></div>
           </div>
 
-          <div className="mt-6">
-            {scanner && !scanning && (
-              <button
-                className={`w-full bg-black text-white py-3 px-4 rounded-lg transition-all duration-200 ${
-                  isActive
-                    ? "transform scale-95 bg-gray-800 ring-2 ring-purple-500 ring-offset-2"
-                    : "hover:bg-gray-800 hover:shadow-lg"
-                }`}
-                onClick={resumeScan}
-              >
-                Scan Another QR Code
-              </button>
-            )}
-          </div>
+          {scannerReady && resumable && (
+            <button
+              onClick={resumeScan}
+              className="w-full bg-black text-white py-3 px-4 rounded-lg transition-all duration-200 hover:bg-gray-800 hover:shadow-lg"
+            >
+              Scan Another QR Code
+            </button>
+          )}
         </div>
       </div>
     </div>
