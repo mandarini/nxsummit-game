@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import {
+  Html5Qrcode,
+  Html5QrcodeSupportedFormats,
+  Html5QrcodeScannerState,
+} from "html5-qrcode";
 import { ArrowLeft } from "lucide-react";
 import {
   getAttendeeById,
@@ -16,9 +20,9 @@ const SCANNER_ID = "reader";
 export default function ScanPage() {
   const navigate = useNavigate();
   const [scanner, setScanner] = useState<Html5Qrcode | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [isActive, setIsActive] = useState(false);
-  const [scannerStarted, setScannerStarted] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannerReady, setScannerReady] = useState(false);
+  const [scannerPaused, setScannerPaused] = useState(false);
 
   useEffect(() => {
     const attendeeId = localStorage.getItem("attendeeId");
@@ -27,7 +31,7 @@ export default function ScanPage() {
       return;
     }
 
-    // Verify the attendee exists and is checked in
+    // Validate attendee
     getAttendeeById(attendeeId)
       .then((attendee) => {
         if (!attendee) {
@@ -36,14 +40,13 @@ export default function ScanPage() {
           navigate("/ticket");
         }
       })
-      .catch(() => {
-        navigate("/identify");
-      });
+      .catch(() => navigate("/identify"));
 
     const html5QrCode = new Html5Qrcode(SCANNER_ID, {
       verbose: false,
       formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
     });
+
     setScanner(html5QrCode);
 
     const startScanner = async () => {
@@ -56,21 +59,25 @@ export default function ScanPage() {
             aspectRatio: 1,
           },
           async (decodedText) => {
-            if (scanning) return;
+            if (isScanning || scannerPaused) return;
+            setIsScanning(true);
 
-            setScanning(true);
             try {
-              await html5QrCode.pause();
+              // 🛑 Pause only if it's scanning
+              if (
+                html5QrCode.getState &&
+                html5QrCode.getState() === Html5QrcodeScannerState.SCANNING
+              ) {
+                await html5QrCode.pause();
+                setScannerPaused(true);
+              }
 
               if (decodedText === attendeeId) {
                 toast.error("You can't scan your own QR code!");
-                setScanning(false);
                 return;
               }
 
-              // First try to match as an attendee
               const scannedAttendee = await getAttendeeById(decodedText);
-
               if (scannedAttendee) {
                 try {
                   await recordScan(attendeeId, decodedText);
@@ -89,9 +96,7 @@ export default function ScanPage() {
                   }
                 }
               } else {
-                // Try to match as a bonus code
                 const bonusCode = await getBonusCode(decodedText);
-
                 if (bonusCode) {
                   const claimed = await claimBonusPoints(
                     attendeeId,
@@ -99,35 +104,35 @@ export default function ScanPage() {
                   );
                   if (claimed) {
                     toast.success(
-                      `🎉 Bonus points claimed! +${bonusCode.points} points\n${bonusCode.description}`
+                      `🎉 Bonus claimed! +${bonusCode.points} points\n${bonusCode.description}`
                     );
                   } else {
-                    toast.error(
-                      "This bonus code has already been claimed or reached its limit!"
-                    );
+                    toast.error("Bonus code already claimed or maxed out.");
                   }
                 } else {
                   toast.error("Invalid QR code");
                 }
               }
             } finally {
-              setScanning(false);
+              setIsScanning(false);
             }
           },
-          () => {} // Silent error handling
+          () => {
+            // Silent error handling
+          }
         );
 
-        setScannerStarted(true);
+        setScannerReady(true);
       } catch (err) {
         console.error("Failed to start scanner", err);
-        toast.error("Failed to start camera. Please check permissions.");
+        toast.error("Could not access camera. Check browser permissions.");
       }
     };
 
     startScanner();
 
     return () => {
-      if (scannerStarted) {
+      if (scannerReady) {
         html5QrCode.stop().catch(() => {});
       }
       try {
@@ -136,18 +141,17 @@ export default function ScanPage() {
         console.error("Failed to clear scanner", error);
       }
     };
-  }, [navigate, scannerStarted, scanning]);
+  }, [navigate]);
 
   const resumeScan = async () => {
     if (!scanner) return;
 
     try {
-      setIsActive(true);
       await scanner.resume();
-      setTimeout(() => setIsActive(false), 200);
+      setScannerPaused(false);
     } catch (err) {
       console.error("Failed to resume scanner", err);
-      setIsActive(false);
+      toast.error("Failed to resume scanner");
     }
   };
 
@@ -164,9 +168,8 @@ export default function ScanPage() {
 
         <div className="bg-white rounded-xl shadow-xl p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Scan QR Code</h1>
-
           <p className="text-center text-gray-600 mb-4">
-            Point your camera at another attendee's QR code to collect points!
+            Point your camera at another attendee’s QR code to collect points!
           </p>
 
           <div className="mb-6">
@@ -181,20 +184,14 @@ export default function ScanPage() {
             ></div>
           </div>
 
-          <div className="mt-6">
-            {scanner && !scanning && (
-              <button
-                className={`w-full bg-black text-white py-3 px-4 rounded-lg transition-all duration-200 ${
-                  isActive
-                    ? "transform scale-95 bg-gray-800 ring-2 ring-purple-500 ring-offset-2"
-                    : "hover:bg-gray-800 hover:shadow-lg"
-                }`}
-                onClick={resumeScan}
-              >
-                Scan Another QR Code
-              </button>
-            )}
-          </div>
+          {scanner && scannerPaused && (
+            <button
+              className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-all"
+              onClick={resumeScan}
+            >
+              Scan Another QR Code
+            </button>
+          )}
         </div>
       </div>
     </div>

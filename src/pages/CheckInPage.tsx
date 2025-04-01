@@ -1,44 +1,32 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { ArrowLeft } from "lucide-react";
-import { checkInAttendee, getAttendeeById } from "../lib/supabase";
-import { requireStaffAccess } from "../lib/auth";
+import {
+  Html5Qrcode,
+  Html5QrcodeScannerState,
+  Html5QrcodeSupportedFormats,
+} from "html5-qrcode";
+import { getAttendeeById, checkInAttendee } from "../lib/supabase";
 import toast from "react-hot-toast";
+import { ArrowLeft } from "lucide-react";
 
 const SCANNER_ID = "reader";
 
 export default function CheckInPage() {
   const navigate = useNavigate();
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [scanner, setScanner] = useState<Html5Qrcode | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [scannerReady, setScannerReady] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [resumable, setResumable] = useState(false);
+  const [scannerPaused, setScannerPaused] = useState(false);
 
-  // Authenticate and initialize scanner
   useEffect(() => {
-    const init = async () => {
-      const attendeeId = localStorage.getItem("attendeeId");
-      const staffAccessGranted = localStorage.getItem("staff_access_granted");
+    const html5QrCode = new Html5Qrcode(SCANNER_ID, {
+      verbose: false,
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+    });
 
-      if (!attendeeId || staffAccessGranted !== "true") {
-        navigate("/identify");
-        return;
-      }
+    setScanner(html5QrCode);
 
-      const attendee = await getAttendeeById(attendeeId);
-      if (!attendee || !(await requireStaffAccess(attendee))) {
-        navigate("/identify");
-        return;
-      }
-
-      const html5QrCode = new Html5Qrcode(SCANNER_ID, {
-        verbose: false,
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      });
-
-      scannerRef.current = html5QrCode;
-
+    const startScanner = async () => {
       try {
         await html5QrCode.start(
           { facingMode: "environment" },
@@ -48,71 +36,74 @@ export default function CheckInPage() {
             aspectRatio: 1,
           },
           async (decodedText) => {
-            if (scanning) return;
+            if (isScanning || scannerPaused) return;
+            setIsScanning(true);
 
-            setScanning(true);
             try {
-              await scannerRef.current?.pause();
+              if (
+                html5QrCode.getState &&
+                html5QrCode.getState() === Html5QrcodeScannerState.SCANNING
+              ) {
+                await html5QrCode.pause();
+                setScannerPaused(true);
+              }
 
               const attendee = await getAttendeeById(decodedText);
+
               if (!attendee) {
-                toast.error("Invalid QR code");
-              } else if (attendee.checked_in) {
-                toast.error("Attendee is already checked in!");
-              } else {
-                await checkInAttendee(decodedText);
-                toast.success(`✅ ${attendee.name} has been checked in!`);
+                toast.error("Attendee not found");
+                return;
               }
-              setResumable(true);
+
+              if (attendee.checked_in) {
+                toast.error(`${attendee.name} is already checked in!`);
+                return;
+              }
+
+              await checkInAttendee(attendee.id);
+              toast.success(`✅ ${attendee.name} is now checked in`);
             } catch (error) {
               console.error("Failed to check in attendee", error);
               toast.error("Failed to check in attendee");
-              setResumable(true);
             } finally {
-              setScanning(false);
+              setIsScanning(false);
             }
           },
-          () => {} // Silent scan errors
+          () => {
+            // Silent scan error
+          }
         );
 
         setScannerReady(true);
       } catch (err) {
         console.error("Failed to start scanner", err);
-        toast.error("Failed to start camera. Please check permissions.");
+        toast.error("Could not access camera. Check browser permissions.");
       }
     };
 
-    init();
+    startScanner();
 
     return () => {
-      const scanner = scannerRef.current;
-      if (scanner?.isScanning) {
-        scanner
-          .stop()
-          .then(() => scanner.clear())
-          .catch((err) => {
-            console.error("Error stopping scanner on unmount", err);
-          });
-      } else if (scanner) {
-        try {
-          scanner.clear();
-        } catch (err) {
-          console.error("Error clearing scanner on unmount", err);
-        }
+      if (scannerReady) {
+        html5QrCode.stop().catch(() => {});
+      }
+      try {
+        html5QrCode.clear();
+      } catch (error) {
+        console.error("Failed to clear scanner", error);
       }
     };
-  }, [navigate]);
+  }, []);
 
   const resumeScan = async () => {
-    if (!scannerRef.current) return;
+    if (!scanner) return;
 
     try {
-      setResumable(false);
-      await scannerRef.current.resume();
+      await scanner.resume();
+      setScannerPaused(false);
     } catch (err) {
       console.error("Failed to resume scanner", err);
       toast.error("Failed to resume scanner");
-      setResumable(true);
     }
   };
 
@@ -124,30 +115,33 @@ export default function CheckInPage() {
           className="mb-6 flex items-center text-white hover:text-gray-200"
         >
           <ArrowLeft className="mr-2" size={20} />
-          Back to Admin
+          Back to Admin Panel
         </button>
 
         <div className="bg-white rounded-xl shadow-xl p-6">
           <h1 className="text-2xl font-bold text-center mb-6">
-            Check In Scanner
+            Check In Attendee
           </h1>
-
           <p className="text-center text-gray-600 mb-4">
-            Point your camera at an attendee's QR code to check them in.
+            Scan attendee QR codes to mark them as checked in.
           </p>
 
           <div className="mb-6">
             <div
               id={SCANNER_ID}
               className="overflow-hidden rounded-lg"
-              style={{ width: "100%", height: "300px" }}
+              style={{
+                width: "100%",
+                maxWidth: "100%",
+                height: "300px",
+              }}
             ></div>
           </div>
 
-          {scannerReady && resumable && (
+          {scanner && scannerPaused && (
             <button
+              className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-all"
               onClick={resumeScan}
-              className="w-full bg-black text-white py-3 px-4 rounded-lg transition-all duration-200 hover:bg-gray-800 hover:shadow-lg"
             >
               Scan Another QR Code
             </button>
