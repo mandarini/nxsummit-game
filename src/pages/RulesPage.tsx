@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Scan, Users, Trophy, Shield } from "lucide-react";
+import { ArrowLeft, Scan, Trophy, Shield, MessageSquare } from "lucide-react";
 import { isGameOn } from "../lib/auth";
 
 export default function RulesPage() {
@@ -58,26 +58,30 @@ export default function RulesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-1">
-                      Access & Scanning
+                      Scanning & Points
                     </h3>
                     <p className="text-gray-600">
-                      After check-in, you'll get access to your ticket with a
-                      unique QR code. Use the built-in scanner to scan other
-                      attendees and earn points!
+                      After check-in, scan other attendees' QR codes to earn
+                      points. Each attendee is worth 1 point, while Nx team
+                      members are worth 4 points - so make sure to find and
+                      interact with the team! Remember: You can only scan each
+                      QR code once.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4">
                   <div className="bg-blue-100 p-3 rounded-lg">
-                    <Users className="text-blue-600" size={24} />
+                    <MessageSquare className="text-blue-600" size={24} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-1">Point System</h3>
+                    <h3 className="font-semibold text-lg mb-1">
+                      Engagement Rewards
+                    </h3>
                     <p className="text-gray-600">
-                      Each attendee you scan earns you points. Nx team members
-                      are worth extra points! Remember, you can only scan each
-                      person once.
+                      Get involved in group discussions and Q&A sessions to earn
+                      bonus points. Staff members will provide special QR codes
+                      for participation.
                     </p>
                   </div>
                 </div>
@@ -91,8 +95,9 @@ export default function RulesPage() {
                       Winning Prizes
                     </h3>
                     <p className="text-gray-600">
-                      A raffle will reward the most engaged participants. The
-                      more points you earn, the better your chances of winning!
+                      The more points you collect, the better your chances of
+                      winning! Points are awarded for interactions,
+                      participation, and engagement throughout the event.
                     </p>
                   </div>
                 </div>
