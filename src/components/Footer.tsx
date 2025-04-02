@@ -28,6 +28,12 @@ export default function Footer() {
             >
               About
             </Link>
+            <Link
+              to="/links"
+              className="text-white/80 hover:text-white transition-colors text-sm"
+            >
+              Links
+            </Link>
             <a
               href="https://nx.dev"
               target="_blank"

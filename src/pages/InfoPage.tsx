@@ -44,9 +44,7 @@ export default function InfoPage() {
 
         <div className="bg-white rounded-xl shadow-xl p-8">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              About
-            </h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">About</h1>
           </div>
 
           {/* Schedule Section */}
@@ -260,16 +258,6 @@ export default function InfoPage() {
           </section>
 
           <div className="text-center space-y-6 pt-6">
-            <a
-              href="https://github.com/mandarini/nxsummit-game"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-purple-600 hover:text-purple-700"
-            >
-              <Code2 size={20} className="mr-2" />
-              View source on GitHub
-            </a>
-
             <div>
               <button
                 onClick={() => navigate("/ticket")}

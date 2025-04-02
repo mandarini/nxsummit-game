@@ -9,6 +9,7 @@ import CheckInPage from "./pages/CheckInPage";
 import RafflePage from "./pages/RafflePage";
 import RulesPage from "./pages/RulesPage";
 import InfoPage from "./pages/InfoPage";
+import LinksPage from "./pages/LinksPage";
 import StaffRoute from "./components/StaffRoute";
 import Footer from "./components/Footer";
 
@@ -22,6 +23,7 @@ function App() {
           <Route path="/scan" element={<ScanPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/info" element={<InfoPage />} />
+          <Route path="/links" element={<LinksPage />} />
           <Route
             path="/admin"
             element={
