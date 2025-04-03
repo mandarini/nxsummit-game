@@ -4,12 +4,21 @@ import { isGameOn } from "../lib/auth";
 
 export default function Footer() {
   const [gameEnabled, setGameEnabled] = useState(false);
+  const [hasAttendee, setHasAttendee] = useState(false);
 
   useEffect(() => {
-    isGameOn().then(setGameEnabled);
+    // Check if there's a valid attendee ID in localStorage
+    const attendeeId = localStorage.getItem("attendeeId");
+    setHasAttendee(!!attendeeId);
+
+    // Only check game status if there's an attendee
+    if (attendeeId) {
+      isGameOn().then(setGameEnabled);
+    }
   }, []);
 
-  if (!gameEnabled) return null;
+  // Don't render footer if no attendee or game is disabled
+  if (!hasAttendee || !gameEnabled) return null;
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-sm">
