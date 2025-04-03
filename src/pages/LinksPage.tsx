@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, FileSpreadsheet, MessageSquare } from "lucide-react";
+import {
+  ArrowLeft,
+  FileSpreadsheet,
+  MessageSquare,
+  Users,
+  Globe,
+} from "lucide-react";
 import { isGameOn } from "../lib/auth";
 
 export default function LinksPage() {
@@ -41,7 +47,7 @@ export default function LinksPage() {
               Important Links
             </h1>
             <p className="text-xl text-gray-600">
-              Submit your feedback and discussion topics
+              Submit your feedback and join our community
             </p>
           </div>
 
@@ -80,6 +86,44 @@ export default function LinksPage() {
                 </h3>
                 <p className="text-blue-600">
                   Help us improve by sharing your thoughts
+                </p>
+              </div>
+            </a>
+
+            <a
+              href="https://go.nx.dev/community"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center p-6 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors group"
+            >
+              <div className="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-200 transition-colors">
+                <Users className="text-indigo-600" size={24} />
+              </div>
+              <div className="ml-4">
+                <h3 className="font-semibold text-lg text-indigo-900">
+                  Join Our Discord
+                </h3>
+                <p className="text-indigo-600">
+                  Connect with the Nx community in the #eu-summit channel
+                </p>
+              </div>
+            </a>
+
+            <a
+              href="https://nx.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center p-6 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group"
+            >
+              <div className="bg-green-100 p-3 rounded-lg group-hover:bg-green-200 transition-colors">
+                <Globe className="text-green-600" size={24} />
+              </div>
+              <div className="ml-4">
+                <h3 className="font-semibold text-lg text-green-900">
+                  Nx Website
+                </h3>
+                <p className="text-green-600">
+                  Explore Nx documentation, guides, and resources
                 </p>
               </div>
             </a>
