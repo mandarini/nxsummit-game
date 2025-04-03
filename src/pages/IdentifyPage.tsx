@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { getAttendeeByEmail } from "../lib/supabase";
 import { isStaffMember, verifyStaffPassword } from "../lib/auth";
+import { useLoginLimiter } from "../lib/login-limiter";
 import toast from "react-hot-toast";
 
 export default function IdentifyPage() {
@@ -13,53 +14,13 @@ export default function IdentifyPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const attendee = await getAttendeeByEmail(email);
-      if (!attendee) {
-        toast.error("Email not found. Please check and try again.");
-        return;
-      }
-
-      const staffStatus = await isStaffMember(email);
-
-      if (staffStatus) {
-        if (!showPasswordInput) {
-          setShowPasswordInput(true);
-          setLoading(false);
-          return;
-        }
-
-        if (!password) {
-          toast.error("Staff password is required");
-          return;
-        }
-
-        const isValidPassword = await verifyStaffPassword(password);
-        if (!isValidPassword) {
-          toast.error("Invalid staff password");
-          return;
-        }
-
-        localStorage.setItem("staff_access_granted", "true");
-        localStorage.setItem("attendeeId", attendee.id);
-        navigate("/admin");
-        return;
-      }
-
-      // Non-staff attendee
-      localStorage.setItem("attendeeId", attendee.id);
-      navigate(`/ticket?email=${encodeURIComponent(email)}`);
-    } catch (error) {
-      console.error("Failed to identify:", error);
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    failedAttempts,
+    disableLogin,
+    disableTimer,
+    setFailedAttempts,
+    resetLoginState,
+  } = useLoginLimiter();
 
   const handleTicketAccess = async () => {
     try {
@@ -80,6 +41,72 @@ export default function IdentifyPage() {
     } catch (error) {
       console.error("Failed to access ticket:", error);
       toast.error("Something went wrong. Please try again.");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Check if login is disabled
+    if (disableLogin) {
+      toast.error(
+        `Too many failed attempts. Please wait ${disableTimer} seconds.`
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    // Add delay based on failed attempts
+    await new Promise((resolve) => setTimeout(resolve, failedAttempts * 1000));
+
+    try {
+      const attendee = await getAttendeeByEmail(email);
+      if (!attendee) {
+        toast.error("Email not found. Please check and try again.");
+        setFailedAttempts(failedAttempts + 1);
+        resetLoginState();
+        return;
+      }
+
+      const staffStatus = await isStaffMember(email);
+
+      if (staffStatus) {
+        if (!showPasswordInput) {
+          setShowPasswordInput(true);
+          setLoading(false);
+          return;
+        }
+
+        if (!password) {
+          toast.error("Staff password is required");
+          return;
+        }
+
+        const isValidPassword = await verifyStaffPassword(password);
+        if (!isValidPassword) {
+          toast.error("Invalid staff password");
+          setFailedAttempts(failedAttempts + 1);
+          resetLoginState();
+          return;
+        }
+
+        localStorage.setItem("staff_access_granted", "true");
+        localStorage.setItem("attendeeId", attendee.id);
+        navigate("/admin");
+        return;
+      }
+
+      // Non-staff attendee
+      localStorage.setItem("attendeeId", attendee.id);
+      navigate(`/ticket?email=${encodeURIComponent(email)}`);
+    } catch (error) {
+      console.error("Failed to identify:", error);
+      toast.error("Something went wrong. Please try again.");
+      setFailedAttempts(failedAttempts + 1);
+      resetLoginState();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -132,11 +159,13 @@ export default function IdentifyPage() {
           <div className="space-y-3">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || disableLogin}
               className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
             >
               {loading
                 ? "Loading..."
+                : disableLogin
+                ? `Please wait ${disableTimer} seconds`
                 : showPasswordInput
                 ? "Verify Staff Access"
                 : "Access Ticket"}
