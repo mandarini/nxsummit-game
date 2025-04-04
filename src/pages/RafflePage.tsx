@@ -27,7 +27,6 @@ export default function RafflePage() {
       return;
     }
 
-    // Verify super_admin status
     try {
       supabase
         .from("attendees")
@@ -68,39 +67,53 @@ export default function RafflePage() {
     }
   };
 
+  const getWeightedRandomIndex = (attendees: Attendee[], power = 3): number => {
+    const weights = attendees.map((a) => Math.pow(a.points, power));
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const rand = Math.random() * totalWeight;
+
+    let cumulative = 0;
+    for (let i = 0; i < weights.length; i++) {
+      cumulative += weights[i];
+      if (rand <= cumulative) return i;
+    }
+
+    return attendees.length - 1;
+  };
+
   const animateRaffle = async () => {
-    const duration = 5000; // 5 seconds
+    const duration = 5000;
     const startTime = Date.now();
     const startRotation = spinnerRotation;
-    const totalRotations = 5; // Number of full rotations
+    const totalRotations = 5;
     const finalRotation = startRotation + 360 * totalRotations;
+
+    let frame = 0;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      // Easing function for smooth deceleration
       const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
       const currentRotation =
         startRotation + (finalRotation - startRotation) * easeOut(progress);
 
       setSpinnerRotation(currentRotation);
 
-      // Highlight random attendees during animation
       if (progress < 1) {
-        setHighlightedIndex(
-          Math.floor(Math.random() * eligibleAttendees.length)
-        );
+        // Just loop through all attendees visually
+        setHighlightedIndex(frame % eligibleAttendees.length);
+        frame++;
         requestAnimationFrame(animate);
       } else {
-        setHighlightedIndex(null);
+        // After the animation, show the actual weighted winner (optional)
+        const realWinnerIndex = getWeightedRandomIndex(eligibleAttendees);
+        setHighlightedIndex(realWinnerIndex); // Optional — flash final result
       }
     };
 
     animate();
-
-    // Return a promise that resolves after the animation
-    return new Promise((resolve) => setTimeout(resolve, duration));
+    return new Promise((resolve) => setTimeout(resolve, duration + 250)); // short pause after highlight
   };
 
   const drawWinner = async () => {
@@ -112,7 +125,6 @@ export default function RafflePage() {
     setDrawing(true);
 
     try {
-      // Start the animation
       await animateRaffle();
 
       const response = await fetch(
@@ -138,7 +150,6 @@ export default function RafflePage() {
 
       const winner = data.winner;
 
-      // Add to winners list
       setWinners((prev) => [
         ...prev,
         {
@@ -148,7 +159,6 @@ export default function RafflePage() {
         },
       ]);
 
-      // Remove winner from eligible pool if repeat winners aren't allowed
       if (!allowRepeatWinners) {
         setEligibleAttendees((prev) => prev.filter((a) => a.id !== winner.id));
         setTotalPoints((prev) => prev - winner.points);
@@ -187,7 +197,6 @@ export default function RafflePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Drawing Controls */}
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-xl p-6">
               <div className="flex items-center justify-between mb-4">
@@ -274,12 +283,11 @@ export default function RafflePage() {
                       />
                     </div>
                     <pre className="text-sm font-mono bg-white p-3 rounded border border-gray-200">
-                      P(winner) = points / {totalPoints}
+                      P(winner) = points³ / total³
                     </pre>
                   </div>
                 )}
 
-                {/* Raffle Wheel Animation */}
                 {drawing && (
                   <div className="relative h-48 bg-gray-50 rounded-lg overflow-hidden">
                     <div
@@ -329,9 +337,7 @@ export default function RafflePage() {
             </div>
           </div>
 
-          {/* Right Column: Winners & Eligible List */}
           <div className="space-y-6">
-            {/* Winners List */}
             <div className="bg-white rounded-xl shadow-xl p-6">
               <h2 className="text-xl font-semibold mb-4">Winners</h2>
               {winners.length === 0 ? (
@@ -369,7 +375,6 @@ export default function RafflePage() {
               )}
             </div>
 
-            {/* Eligible Attendees List */}
             <div className="bg-white rounded-xl shadow-xl p-6">
               <h2 className="text-xl font-semibold mb-4">Eligible Attendees</h2>
               <div className="space-y-2">
