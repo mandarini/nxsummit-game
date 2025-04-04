@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
+import { createClient } from "npm:@supabase/supabase-js@2.39.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       {
         auth: {
           autoRefreshToken: false,
@@ -35,78 +35,80 @@ Deno.serve(async (req) => {
     const { attendeeId, raffleType } = await req.json();
 
     if (!attendeeId || !raffleType) {
-      throw new Error('Missing required parameters');
+      throw new Error("Missing required parameters");
     }
 
     // Verify the user is a super_admin
     const { data: admin, error: adminError } = await supabase
-      .from('attendees')
-      .select('role')
-      .eq('id', attendeeId)
+      .from("attendees")
+      .select("role")
+      .eq("id", attendeeId)
       .single();
 
-    if (adminError || admin?.role !== 'super_admin') {
-      throw new Error('Unauthorized - Not a super admin');
+    if (adminError || admin?.role !== "super_admin") {
+      throw new Error("Unauthorized - Not a super admin");
     }
 
     // Get eligible attendees (checked in and more than 1 point)
     const { data: eligibleAttendees, error: attendeesError } = await supabase
-      .from('attendees')
-      .select('id, name, points')
-      .gt('points', 0)
-      .eq('checked_in', true)
-      .not('role', 'in', '("staff","super_admin")');
+      .from("attendees")
+      .select("id, name, points")
+      .gt("points", 0)
+      .eq("checked_in", true)
+      .not("role", "in", '("staff","super_admin")');
 
     if (attendeesError) throw attendeesError;
     if (!eligibleAttendees?.length) {
-      throw new Error('No eligible attendees found');
+      throw new Error("No eligible attendees found");
     }
 
     let winner: Attendee;
 
-    if (raffleType === 'weighted') {
+    if (raffleType === "weighted") {
       winner = drawWeightedWinner(eligibleAttendees);
-    } else if (raffleType === 'shares') {
+    } else if (raffleType === "shares") {
       winner = drawSharesWinner(eligibleAttendees);
     } else {
-      throw new Error('Invalid raffle type');
+      throw new Error("Invalid raffle type");
     }
 
     // Record the winner
     const { error: insertError } = await supabase
-      .from('raffle_winners')
+      .from("raffle_winners")
       .insert({
         attendee_id: winner.id,
-        raffle_type: raffleType
+        raffle_type: raffleType,
       });
 
     if (insertError) throw insertError;
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         winner: {
           id: winner.id,
           name: winner.name,
-          points: winner.points
-        }
-      }), {
+          points: winner.points,
+        },
+      }),
+      {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...corsHeaders,
         },
       }
     );
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error("Error:", error.message);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }), {
-        status: error.message.includes('Unauthorized') ? 403 : 400,
+      JSON.stringify({
+        success: false,
+        error: error.message,
+      }),
+      {
+        status: error.message.includes("Unauthorized") ? 403 : 400,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...corsHeaders,
         },
       }
@@ -115,30 +117,32 @@ Deno.serve(async (req) => {
 });
 
 function drawWeightedWinner(attendees: Attendee[]): Attendee {
-  const totalPoints = attendees.reduce((sum, a) => sum + a.points, 0);
+  const sorted = [...attendees].sort((a, b) => b.points - a.points);
+  const totalPoints = sorted.reduce((sum, a) => sum + a.points, 0);
   const random = Math.random() * totalPoints;
-  let sum = 0;
-  
-  for (const attendee of attendees) {
-    sum += attendee.points;
-    if (random <= sum) {
+
+  let cumulative = 0;
+  for (const attendee of sorted) {
+    cumulative += attendee.points;
+    if (random <= cumulative) {
       return attendee;
     }
   }
-  
-  return attendees[attendees.length - 1];
+
+  // Shouldn't happen, but fallback
+  return sorted[sorted.length - 1];
 }
 
 function drawSharesWinner(attendees: Attendee[]): Attendee {
   const pool: Attendee[] = [];
-  
+
   // Add each attendee to the pool once per point
-  attendees.forEach(attendee => {
+  attendees.forEach((attendee) => {
     for (let i = 0; i < attendee.points; i++) {
       pool.push(attendee);
     }
   });
-  
+
   const randomIndex = Math.floor(Math.random() * pool.length);
   return pool[randomIndex];
 }
