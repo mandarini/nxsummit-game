@@ -2,6 +2,38 @@
 
 This is the official event web app for the Nx Summit – built to make check-ins smoother and add a layer of fun and gamification to the day.
 
+## 🎯 Want to Use This for Your Own Event?
+
+This app was built for the Nx Summit but can be easily adapted for any event! Whether you're organizing a conference, meetup, workshop, or corporate gathering, you can fork this repository and customize it for your needs.
+
+### 📖 [Complete Customization Guide](./CUSTOMIZATION.md)
+
+The guide covers everything you need to know:
+
+- 🏷️ **Branding**: Update event name, colors, and logos
+- 📅 **Schedule**: Replace the Nx Summit agenda with your event timeline
+- 🎫 **Event Details**: Customize dates, venue, and attendee information
+- ⚙️ **Configuration**: Set up your own Supabase database and environment
+- 🚀 **Deployment**: Get your customized app live for your event
+
+**Quick Overview of What You'll Need to Change:**
+
+- Event name and branding throughout the app
+- Complete event schedule in `src/pages/InfoPage.tsx`
+- Date, time, and venue information in `src/pages/TicketPage.tsx`
+- Your attendee list in the database
+- Environment variables for your Supabase setup
+
+### 🌟 Perfect for:
+
+- Tech conferences and meetups
+- Corporate events and team gatherings
+- Workshops and training sessions
+- Networking events
+- Any gathering where you want to gamify interactions!
+
+[**👉 Get Started with the Full Customization Guide**](./CUSTOMIZATION.md)
+
 ## 🌟 Features
 
 ### 📱 Check-in System
@@ -225,38 +257,6 @@ Two drawing modes:
 2. **Shares-Based Raffle**:
    - Each point = one entry
    - More points = more chances to win
-
-## 🎯 Want to Use This for Your Own Event?
-
-This app was built for the Nx Summit but can be easily adapted for any event! Whether you're organizing a conference, meetup, workshop, or corporate gathering, you can fork this repository and customize it for your needs.
-
-### 📖 [Complete Customization Guide](./CUSTOMIZATION.md)
-
-The guide covers everything you need to know:
-
-- 🏷️ **Branding**: Update event name, colors, and logos
-- 📅 **Schedule**: Replace the Nx Summit agenda with your event timeline
-- 🎫 **Event Details**: Customize dates, venue, and attendee information
-- ⚙️ **Configuration**: Set up your own Supabase database and environment
-- 🚀 **Deployment**: Get your customized app live for your event
-
-**Quick Overview of What You'll Need to Change:**
-
-- Event name and branding throughout the app
-- Complete event schedule in `src/pages/InfoPage.tsx`
-- Date, time, and venue information in `src/pages/TicketPage.tsx`
-- Your attendee list in the database
-- Environment variables for your Supabase setup
-
-### 🌟 Perfect for:
-
-- Tech conferences and meetups
-- Corporate events and team gatherings
-- Workshops and training sessions
-- Networking events
-- Any gathering where you want to gamify interactions!
-
-[**👉 Get Started with the Full Customization Guide**](./CUSTOMIZATION.md)
 
 ## 📄 License
 
